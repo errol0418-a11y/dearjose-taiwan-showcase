@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,58 +14,178 @@ import {
   Menu,
   X,
   Search,
-  Filter
+  Filter,
+  Loader2
 } from "lucide-react";
-import rawData from "../dearjose_financial_master.json";
+
+// ⚠️ 在這裡貼上您的 Google Sheets 釋出的 CSV 網址 ⚠️
+// 您的 Google 試算表需要發布為網頁，並選擇「逗號分隔值 (.csv)」格式，將其網址複製並貼在下方：
+const GOOGLE_SHEETS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT5K76uR-YxUu6rW20-VvO8Z6U_XN6W377-M1u0U_Lp8R73_U8W7X6O_Z9_example/pub?output=csv";
 
 // 定義商品介面
 interface Product {
   display_seq: number;
-  database_id: number;
-  slug: string;
-  product_url: string;
   name_en: string;
   name_zh: string;
   primary_category: string;
-  categories: string;
   image_url: string;
-  image_local_path: string;
-  official_vnd_display: string;
   vnd_price: number;
-  exchange_vnd_per_twd: number;
-  actual_cost_ntd: number;
-  customer_price_ntd: number;
-  kol_commission_ntd: number;
-  boss_net_profit_ntd: number;
-  profit_margin_pct: number;
-  customer_price_display: string;
-  actual_cost_display: string;
-  kol_commission_display: string;
-  boss_net_profit_display: string;
-  profit_margin_display: string;
   is_new_arrival: boolean;
   is_sale: boolean;
+  // 前端動態計算產出的欄位
+  official_vnd_display: string;
+  customer_price_display: string;
+  customer_price_ntd: number;
 }
-
-const products = rawData as Product[];
 
 // 高質感生成圖片連結
 const HERO_BG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663319085540/ii8vJZA79cWbsKnwmtZxNC/dearjose_hero-BiQJQWvcRoRqrYvbR6k8yL.webp";
 const BRAND_STORY_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663319085540/ii8vJZA79cWbsKnwmtZxNC/dearjose_brand_story-Vnt4LSa35rcQMKgvh62zDP.webp";
 const ANNOUNCEMENT_BG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663319085540/ii8vJZA79cWbsKnwmtZxNC/dearjose_announcement_bg-ggFxGyqNvvCCDCyYf87AiX.webp";
 
+// 簡單的 CSV 解析器
+function parseCSV(text: string): Record<string, string>[] {
+  const lines = text.split(/\r?\n/);
+  if (lines.length === 0 || !lines[0]) return [];
+  
+  // 解析首行 Headers
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  const results: Record<string, string>[] = [];
+  
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    // 簡單的 CSV 分割，考慮雙引號
+    const values: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let j = 0; j < line.length; j++) {
+      const char = line[j];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        values.push(current.trim().replace(/^"|"$/g, ''));
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    values.push(current.trim().replace(/^"|"$/g, ''));
+    
+    if (values.length >= headers.length) {
+      const row: Record<string, string> = {};
+      headers.forEach((header, index) => {
+        row[header] = values[index] || '';
+      });
+      results.push(row);
+    }
+  }
+  return results;
+}
+
 export default function Home() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [filterNew, setFilterNew] = useState<boolean>(false);
   const [filterSale, setFilterSale] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
+  // 動態加載 Google Sheets 商品數據並進行前端精算
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // 嘗試 Fetch Google Sheets 發布的 CSV
+        const response = await fetch(GOOGLE_SHEETS_CSV_URL);
+        if (!response.ok) {
+          throw new Error("無法讀取 Google Sheets 數據，請確認您的 CSV 網址是否正確且已發布。");
+        }
+        
+        const csvText = await response.text();
+        const parsedRows = parseCSV(csvText);
+        
+        // 將 CSV 轉換為商品格式，並自動套用核心財務公式
+        const loadedProducts: Product[] = parsedRows.map((row, idx) => {
+          const vndPrice = parseFloat(row.Price_VND || row.price_vnd || "0") || 0;
+          
+          // 核心財務公式：台灣售價 = ( 原始 VND ÷ 800 ) × 1.4
+          // 採用個位數無條件進位：例如 Math.ceil(val / 10) * 10
+          const actualCostNtd = vndPrice / 800;
+          const rawCustomerPrice = actualCostNtd * 1.4;
+          const customerPriceNtd = Math.ceil(rawCustomerPrice / 10) * 10;
+          
+          // 格式化顯示
+          const officialVndDisplay = `₫${vndPrice.toLocaleString('en-US')}`;
+          const customerPriceDisplay = `NT$${customerPriceNtd.toLocaleString('en-US')}`;
+          
+          return {
+            display_seq: idx + 1,
+            name_en: row.Title_EN || row.title_en || "Elegant Item",
+            name_zh: row.Title_ZH || row.title_zh || "法式設計單品",
+            primary_category: row.Category || row.category || "Dresses",
+            image_url: row.Image_URL || row.image_url || "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&auto=format&fit=crop&q=60",
+            vnd_price: vndPrice,
+            is_new_arrival: (row.Is_New_Arrival || row.is_new_arrival || "").toLowerCase() === 'true',
+            is_sale: (row.Is_Sale || row.is_sale || "").toLowerCase() === 'true',
+            official_vnd_display: officialVndDisplay,
+            customer_price_display: customerPriceDisplay,
+            customer_price_ntd: customerPriceNtd
+          };
+        });
+        
+        setProducts(loadedProducts);
+      } catch (err: any) {
+        console.error("Error loading products:", err);
+        setError(err.message || "加載商品失敗");
+        
+        // 備用防錯方案：如果加載失敗，載入一個示範商品，確保網頁視覺不會全空
+        setProducts([
+          {
+            display_seq: 1,
+            name_en: "Love In Peace Mini Dress",
+            name_zh: "經典浪漫迷你洋裝",
+            primary_category: "Dresses",
+            image_url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663319085540/ii8vJZA79cWbsKnwmtZxNC/dearjose_brand_story-Vnt4LSa35rcQMKgvh62zDP.webp",
+            vnd_price: 2600000,
+            is_new_arrival: true,
+            is_sale: false,
+            official_vnd_display: "₫2,600,000",
+            customer_price_display: "NT$4,550",
+            customer_price_ntd: 4550
+          },
+          {
+            display_seq: 2,
+            name_en: "Aperol Spritz Top",
+            name_zh: "經典浪漫蕾絲上衣",
+            primary_category: "Tops",
+            image_url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663319085540/ii8vJZA79cWbsKnwmtZxNC/dearjose_hero-BiQJQWvcRoRqrYvbR6k8yL.webp",
+            vnd_price: 1850000,
+            is_new_arrival: true,
+            is_sale: false,
+            official_vnd_display: "₫1,850,000",
+            customer_price_display: "NT$3,240",
+            customer_price_ntd: 3240
+          }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
   // 所有可用分類
   const categories = useMemo(() => {
     const cats = new Set(products.map(p => p.primary_category));
     return ["All", ...Array.from(cats).filter(Boolean)];
-  }, []);
+  }, [products]);
 
   // 篩選商品
   const filteredProducts = useMemo(() => {
@@ -77,7 +197,7 @@ export default function Home() {
       const matchesSale = !filterSale || p.is_sale;
       return matchesCategory && matchesSearch && matchesNew && matchesSale;
     });
-  }, [activeCategory, searchQuery, filterNew, filterSale]);
+  }, [products, activeCategory, searchQuery, filterNew, filterSale]);
 
   return (
     <div className="min-h-screen bg-[#faf8f5] text-[#2d2621] selection:bg-[#b39274] selection:text-white">
@@ -348,7 +468,30 @@ export default function Home() {
           </div>
 
           {/* 商品 Grid */}
-          {filteredProducts.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-32 bg-white border border-[#e6dfd5] flex flex-col items-center justify-center">
+              <Loader2 className="w-10 h-10 text-[#b39274] animate-spin mb-4" />
+              <p className="text-[#70635c] font-light tracking-wider text-sm">正在從 Google Sheets 動態加載並精算商品中...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-20 bg-white border border-[#e6dfd5] p-8">
+              <div className="max-w-md mx-auto">
+                <p className="text-[#b39274] font-serif text-lg mb-2">💡 提示：系統已準備就緒！</p>
+                <p className="text-[#70635c] font-light text-sm leading-relaxed mb-6">
+                  網頁已成功升級為「Google Sheets 動態連動版」。目前尚未綁定您的專屬 CSV 網址，已為您自動載入精美示範商品。
+                </p>
+                <div className="text-left bg-[#faf8f5] border border-[#e6dfd5] p-4 text-xs font-mono text-[#70635c] leading-relaxed mb-6">
+                  請將您發布的 Google CSV 網址，貼在 Home.tsx 第 33 行的 <code className="text-[#b39274] font-bold">GOOGLE_SHEETS_CSV_URL</code> 變數中。
+                </div>
+                <Button 
+                  onClick={() => setError(null)}
+                  className="bg-[#b39274] hover:bg-[#2d2621] text-white rounded-none text-xs tracking-wider uppercase font-sans"
+                >
+                  查看示範商品
+                </Button>
+              </div>
+            </div>
+          ) : filteredProducts.length === 0 ? (
             <div className="text-center py-20 bg-white border border-[#e6dfd5] rounded-none">
               <ShoppingBag className="w-12 h-12 text-[#b39274]/40 mx-auto mb-4" />
               <p className="font-serif italic text-lg text-[#70635c] mb-2">沒有找到符合條件的商品</p>
@@ -358,7 +501,7 @@ export default function Home() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
               {filteredProducts.map((p) => (
                 <Card 
-                  key={p.slug} 
+                  key={p.display_seq} 
                   className="group bg-white rounded-none border border-[#e6dfd5] overflow-hidden transition-all duration-500 hover:shadow-md hover:border-[#b39274]/50 flex flex-col h-full"
                 >
                   {/* 商品圖片 */}
