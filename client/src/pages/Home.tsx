@@ -21,7 +21,7 @@ import rawData from "../dearjose_financial_master.json";
 // 定義商品介面
 interface Product {
   display_seq: number;
-  database_id: string;
+  database_id: number;
   slug: string;
   product_url: string;
   name_en: string;
