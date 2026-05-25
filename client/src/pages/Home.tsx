@@ -245,10 +245,10 @@ export default function Home() {
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2 text-[#b39274]">
                   <TrendingUp className="w-5 h-5" />
-                  <span className="font-sans text-xs uppercase tracking-wider font-bold">專屬跨境匯率</span>
+                  <span className="font-sans text-xs uppercase tracking-wider font-bold">正品買手直郵</span>
                 </div>
                 <p className="text-xs text-[#70635c] font-light leading-relaxed">
-                  採用 1 TWD = 800 VND 專屬匯率精算，到手價格超值透明。
+                  由胡志明市品牌總部直接採購空運，100% 官方正品保障。
                 </p>
               </div>
               <div className="flex flex-col gap-2">
@@ -278,7 +278,7 @@ export default function Home() {
             </h2>
             <div className="w-16 h-[1px] bg-[#b39274] mx-auto my-6" />
             <p className="font-sans text-sm text-[#70635c] font-light leading-relaxed">
-              共計收錄官網 91 件熱銷商品。提供中文/英文對照名稱，以及台灣客人專屬全包到手價 (NT$)。
+              共計收錄官網 91 件熱銷商品。提供中文/英文對照名稱、官網原價 (VND)，以及台灣客人專屬全包到手價 (NT$)。
             </p>
           </div>
 
@@ -402,17 +402,20 @@ export default function Home() {
                     </div>
 
                     {/* 價格區塊 */}
-                    <div className="pt-4 border-t border-[#e6dfd5]/40 flex items-center justify-between">
+                    <div className="pt-4 border-t border-[#e6dfd5]/40 flex items-baseline justify-between">
                       <div className="flex flex-col">
-                        <span className="text-[10px] uppercase tracking-wider text-[#b39274] font-sans font-bold">
-                          到手專屬價
+                        <span className="text-[9px] uppercase tracking-wider text-[#70635c]/60 font-sans">
+                          官網原價
                         </span>
-                        <span className="text-xs text-[#70635c]/60 font-sans">
-                          全包直郵到府
+                        <span className="text-xs text-[#70635c]/80 font-sans font-light">
+                          {p.official_vnd_display}
                         </span>
                       </div>
                       <div className="flex flex-col items-end">
-                        <span className="text-xl font-sans font-bold text-[#b39274]">
+                        <span className="text-[9px] uppercase tracking-wider text-[#b39274] font-sans font-bold">
+                          到手專屬價
+                        </span>
+                        <span className="text-lg md:text-xl font-sans font-bold text-[#b39274]">
                           {p.customer_price_display}
                         </span>
                       </div>
