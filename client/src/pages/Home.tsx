@@ -30,6 +30,7 @@ interface Product {
   name_zh: string;
   primary_category: string;
   image_url: string;
+  product_url: string; // 官網商品詳情頁網址
   vnd_price: number;
   is_new_arrival: boolean;
   is_sale: boolean;
@@ -52,6 +53,7 @@ const backupProducts: Product[] = (backupRawData as any[]).map((p, idx) => {
     name_zh: p.name_zh || "法式設計單品",
     primary_category: p.primary_category || "Dresses",
     image_url: p.image_url,
+    product_url: p.product_url || `https://www.dearjose.com/en/categories/women-fashion`, // 備用官網商品連結
     vnd_price: vndPrice,
     is_new_arrival: !!p.is_new_arrival,
     is_sale: !!p.is_sale,
@@ -154,6 +156,7 @@ export default function Home() {
             name_zh: row.Title_ZH || row.title_zh || "法式設計單品",
             primary_category: row.Category || row.category || "Dresses",
             image_url: row.Image_URL || row.image_url || "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&auto=format&fit=crop&q=60",
+            product_url: row.Product_URL || row.product_url || "https://www.dearjose.com/en/categories/women-fashion", // 讀取試算表中的商品官網連結
             vnd_price: vndPrice,
             is_new_arrival: (row.Is_New_Arrival || row.is_new_arrival || "").toLowerCase() === 'true',
             is_sale: (row.Is_Sale || row.is_sale || "").toLowerCase() === 'true',
@@ -501,8 +504,13 @@ export default function Home() {
                   key={p.display_seq} 
                   className="group bg-white rounded-none border border-[#e6dfd5] overflow-hidden transition-all duration-500 hover:shadow-md hover:border-[#b39274]/50 flex flex-col h-full"
                 >
-                  {/* 商品圖片 */}
-                  <div className="relative aspect-[3/4] overflow-hidden bg-stone-100">
+                  {/* 商品圖片（可點擊跳轉官網） */}
+                  <a 
+                    href={p.product_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="relative aspect-[3/4] overflow-hidden bg-stone-100 block"
+                  >
                     <img 
                       src={p.image_url} 
                       alt={p.name_en} 
@@ -522,7 +530,7 @@ export default function Home() {
                         </Badge>
                       )}
                     </div>
-                  </div>
+                  </a>
 
                   {/* 商品資訊 */}
                   <CardContent className="p-6 flex flex-col flex-grow justify-between">
@@ -531,34 +539,53 @@ export default function Home() {
                       <span className="text-[10px] uppercase tracking-widest text-[#b39274] font-sans font-semibold block mb-2">
                         {p.primary_category}
                       </span>
-                      {/* 英文名 */}
-                      <h3 className="font-serif text-base font-normal tracking-wide text-[#2d2621] line-clamp-1 group-hover:text-[#b39274] transition-colors duration-300 mb-1">
-                        {p.name_en}
-                      </h3>
+                      {/* 英文名（可點擊跳轉官網） */}
+                      <a 
+                        href={p.product_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="block group-hover:text-[#b39274] transition-colors duration-300"
+                      >
+                        <h3 className="font-serif text-base font-normal tracking-wide text-[#2d2621] line-clamp-1 mb-1">
+                          {p.name_en}
+                        </h3>
+                      </a>
                       {/* 中文譯名 */}
                       <p className="font-sans text-xs text-[#70635c] font-light line-clamp-1">
                         {p.name_zh || "經典優雅時尚單品"}
                       </p>
                     </div>
 
-                    {/* 價格區塊 */}
-                    <div className="pt-4 border-t border-[#e6dfd5]/40 flex items-baseline justify-between">
-                      <div className="flex flex-col">
-                        <span className="text-[9px] uppercase tracking-wider text-[#70635c]/60 font-sans">
-                          官網原價
-                        </span>
-                        <span className="text-xs text-[#70635c]/80 font-sans font-light">
-                          {p.official_vnd_display}
-                        </span>
+                    {/* 價格與跳轉區塊 */}
+                    <div className="pt-4 border-t border-[#e6dfd5]/40 flex flex-col gap-3">
+                      <div className="flex items-baseline justify-between">
+                        <div className="flex flex-col">
+                          <span className="text-[9px] uppercase tracking-wider text-[#70635c]/60 font-sans">
+                            官網原價
+                          </span>
+                          <span className="text-xs text-[#70635c]/80 font-sans font-light">
+                            {p.official_vnd_display}
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <span className="text-[9px] uppercase tracking-wider text-[#b39274] font-sans font-bold">
+                            到手專屬價
+                          </span>
+                          <span className="text-lg md:text-xl font-sans font-bold text-[#b39274]">
+                            {p.customer_price_display}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex flex-col items-end">
-                        <span className="text-[9px] uppercase tracking-wider text-[#b39274] font-sans font-bold">
-                          到手專屬價
-                        </span>
-                        <span className="text-lg md:text-xl font-sans font-bold text-[#b39274]">
-                          {p.customer_price_display}
-                        </span>
-                      </div>
+                      
+                      {/* 前往官網詳情頁按鈕 */}
+                      <a 
+                        href={p.product_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="w-full text-center py-2 border border-[#e6dfd5] text-[10px] font-sans uppercase tracking-widest text-[#70635c] hover:bg-[#b39274] hover:text-white hover:border-[#b39274] transition-all duration-300 block"
+                      >
+                        前往官網對照
+                      </a>
                     </div>
                   </CardContent>
                 </Card>

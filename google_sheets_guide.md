@@ -15,6 +15,7 @@
 | **`Category`** | 商品分類（系統會依此自動將商品歸類） | `Dresses`、`Tops`、`Bottoms`、`Outerwear` |
 | **`Price_VND`** | 原始越南盾價格（純數字，不含逗號與貨幣符號） | `2600000` |
 | **`Image_URL`** | 商品主圖片雲端網址 | `https://images.unsplash.com/...` |
+| **`Product_URL`** | 官網商品詳情頁連結（消費者點擊圖片或品名會在新分頁開啟此網址） | `https://www.dearjose.com/en/product/love-in-peace-mini-dress` |
 | **`Is_New_Arrival`** | 是否為新品（填 `TRUE` 會在卡片右上角亮起香檳金 **New** 標籤） | `TRUE` 或 `FALSE` |
 | **`Is_Sale`** | 是否為折扣品（填 `TRUE` 會亮起復古紅 **Sale** 標籤） | `TRUE` 或 `FALSE` |
 
