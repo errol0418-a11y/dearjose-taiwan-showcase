@@ -17,9 +17,10 @@ import {
   Filter,
   Loader2
 } from "lucide-react";
+import backupRawData from "../dearjose_financial_master.json";
 
 // ⚠️ 在這裡貼上您的 Google Sheets 釋出的 CSV 網址 ⚠️
-// 您的 Google 試算表需要發布為網頁，並選擇「逗號分隔值 (.csv)」格式，將其網址複製並貼在下方：
+// 您的 Google 試算表需要發布為網頁，並選擇「逗號分隔值 (.csv)」格式，將其網址複製並貼 in 下方：
 const GOOGLE_SHEETS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT5K76uR-YxUu6rW20-VvO8Z6U_XN6W377-M1u0U_Lp8R73_U8W7X6O_Z9_example/pub?output=csv";
 
 // 定義商品介面
@@ -37,6 +38,28 @@ interface Product {
   customer_price_display: string;
   customer_price_ntd: number;
 }
+
+// 整理備用數據（確保 91 件抓好的商品完全對齊最新 800 匯率與 1.4 倍公式）
+const backupProducts: Product[] = (backupRawData as any[]).map((p, idx) => {
+  const vndPrice = p.vnd_price || 0;
+  const actualCostNtd = vndPrice / 800;
+  const rawCustomerPrice = actualCostNtd * 1.4;
+  const customerPriceNtd = Math.ceil(rawCustomerPrice / 10) * 10;
+
+  return {
+    display_seq: idx + 1,
+    name_en: p.name_en,
+    name_zh: p.name_zh || "法式設計單品",
+    primary_category: p.primary_category || "Dresses",
+    image_url: p.image_url,
+    vnd_price: vndPrice,
+    is_new_arrival: !!p.is_new_arrival,
+    is_sale: !!p.is_sale,
+    official_vnd_display: `₫${vndPrice.toLocaleString('en-US')}`,
+    customer_price_display: `NT$${customerPriceNtd.toLocaleString('en-US')}`,
+    customer_price_ntd: customerPriceNtd
+  };
+});
 
 // 高質感生成圖片連結
 const HERO_BG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663319085540/ii8vJZA79cWbsKnwmtZxNC/dearjose_hero-BiQJQWvcRoRqrYvbR6k8yL.webp";
@@ -145,35 +168,8 @@ export default function Home() {
         console.error("Error loading products:", err);
         setError(err.message || "加載商品失敗");
         
-        // 備用防錯方案：如果加載失敗，載入一個示範商品，確保網頁視覺不會全空
-        setProducts([
-          {
-            display_seq: 1,
-            name_en: "Love In Peace Mini Dress",
-            name_zh: "經典浪漫迷你洋裝",
-            primary_category: "Dresses",
-            image_url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663319085540/ii8vJZA79cWbsKnwmtZxNC/dearjose_brand_story-Vnt4LSa35rcQMKgvh62zDP.webp",
-            vnd_price: 2600000,
-            is_new_arrival: true,
-            is_sale: false,
-            official_vnd_display: "₫2,600,000",
-            customer_price_display: "NT$4,550",
-            customer_price_ntd: 4550
-          },
-          {
-            display_seq: 2,
-            name_en: "Aperol Spritz Top",
-            name_zh: "經典浪漫蕾絲上衣",
-            primary_category: "Tops",
-            image_url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663319085540/ii8vJZA79cWbsKnwmtZxNC/dearjose_hero-BiQJQWvcRoRqrYvbR6k8yL.webp",
-            vnd_price: 1850000,
-            is_new_arrival: true,
-            is_sale: false,
-            official_vnd_display: "₫1,850,000",
-            customer_price_display: "NT$3,240",
-            customer_price_ntd: 3240
-          }
-        ]);
+        // 備用防錯方案：如果加載失敗或尚未設定 CSV，自動載入全站 91 件原本抓取好的完美商品數據
+        setProducts(backupProducts);
       } finally {
         setLoading(false);
       }
@@ -467,29 +463,30 @@ export default function Home() {
             </Tabs>
           </div>
 
+          {/* Google Sheets 連動狀態提示 */}
+          {error && (
+            <div className="mb-10 bg-[#faf8f5] border border-[#b39274]/30 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex-1">
+                <p className="text-[#b39274] font-serif text-sm font-semibold mb-1">💡 系統提示：Google Sheets 動態連動已就緒</p>
+                <p className="text-[#70635c] font-sans text-xs font-light leading-relaxed">
+                  本站已升級為雲端連動版。目前尚未綁定您的 CSV 網址，<strong>已自動為您加載原本抓取好的 91 件全站商品</strong>。
+                  您隨時可以將發布的 Google CSV 網址，貼在 <code className="font-mono text-[#b39274]">Home.tsx</code> 的第 24 行。
+                </p>
+              </div>
+              <Button 
+                onClick={() => setError(null)}
+                className="bg-[#2d2621] hover:bg-[#b39274] text-white rounded-none text-[10px] tracking-wider uppercase font-sans px-4 py-2 h-auto"
+              >
+                我知道了
+              </Button>
+            </div>
+          )}
+
           {/* 商品 Grid */}
           {loading ? (
             <div className="text-center py-32 bg-white border border-[#e6dfd5] flex flex-col items-center justify-center">
               <Loader2 className="w-10 h-10 text-[#b39274] animate-spin mb-4" />
               <p className="text-[#70635c] font-light tracking-wider text-sm">正在從 Google Sheets 動態加載並精算商品中...</p>
-            </div>
-          ) : error ? (
-            <div className="text-center py-20 bg-white border border-[#e6dfd5] p-8">
-              <div className="max-w-md mx-auto">
-                <p className="text-[#b39274] font-serif text-lg mb-2">💡 提示：系統已準備就緒！</p>
-                <p className="text-[#70635c] font-light text-sm leading-relaxed mb-6">
-                  網頁已成功升級為「Google Sheets 動態連動版」。目前尚未綁定您的專屬 CSV 網址，已為您自動載入精美示範商品。
-                </p>
-                <div className="text-left bg-[#faf8f5] border border-[#e6dfd5] p-4 text-xs font-mono text-[#70635c] leading-relaxed mb-6">
-                  請將您發布的 Google CSV 網址，貼在 Home.tsx 第 33 行的 <code className="text-[#b39274] font-bold">GOOGLE_SHEETS_CSV_URL</code> 變數中。
-                </div>
-                <Button 
-                  onClick={() => setError(null)}
-                  className="bg-[#b39274] hover:bg-[#2d2621] text-white rounded-none text-xs tracking-wider uppercase font-sans"
-                >
-                  查看示範商品
-                </Button>
-              </div>
             </div>
           ) : filteredProducts.length === 0 ? (
             <div className="text-center py-20 bg-white border border-[#e6dfd5] rounded-none">
