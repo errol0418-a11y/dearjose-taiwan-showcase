@@ -257,9 +257,9 @@ export default function Home() {
       });
       if (!response.ok) throw new Error("server unavailable");
     } catch {
+      // 若部署環境沒有啟用 /api/orders，仍保留於目前瀏覽器，避免客人送單後看不到紀錄。
       saveLocalOrder(order);
     }
-    saveLocalOrder(order);
     setLatestOrder(order);
     setCart([]);
     setCartOpen(false);
